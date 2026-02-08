@@ -79,6 +79,7 @@ Possible filters:
 - salary_min (integer)
 - salary_max (integer)
 - location (string)
+- country (string, e.g., "US", "CA", "UK")
 - experience_level (string: senior, junior)
 - mission_keywords (list of strings)
 - company_industry (list of strings)
@@ -206,29 +207,12 @@ async def apply_refinement(
                 },
             )
 
-        # Heuristic: map domain refinements (e.g., tax) to title constraints, not mission keywords
-        domain_title_hints = {
-            "tax": ["Tax", "Tax Accountant", "Tax Analyst"],
-            "audit": ["Audit", "Auditor", "Audit Analyst"],
-            "payroll": ["Payroll", "Payroll Specialist"],
-        }
-        normalized_query = query.lower()
-        matched_titles: list[str] = []
-        for key, titles in domain_title_hints.items():
-            if key in normalized_query:
-                matched_titles.extend(titles)
-        if matched_titles:
-            existing = filter_changes.get("inferred_titles") or []
-            filter_changes["inferred_titles"] = list({*existing, *matched_titles})
-            # Drop mission keywords if the user is refining by domain/role
-            if "mission_keywords" in filter_changes:
-                filter_changes.pop("mission_keywords")
-        
         # Normalize location synonyms (e.g., USA -> US)
         if "location" in filter_changes and isinstance(filter_changes["location"], str):
             loc = filter_changes["location"].strip().lower()
             if loc in {"usa", "u.s.a", "united states", "united states of america"}:
-                filter_changes["location"] = "US"
+                filter_changes.pop("location", None)
+                filter_changes["country"] = "US"
 
         # Merge: start with current filters, apply changes
         merged = {**current_filters}

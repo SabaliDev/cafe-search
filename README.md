@@ -9,24 +9,90 @@ A conversational job search API with semantic search, multi-turn refinement, and
 - Redis for session state (fallback to PostgreSQL JSONB)
 - Optional cross-encoder reranker (sentence-transformers)
 
-## Setup
+## Quick Start
 
-1. Start services:
+Choose one of the following options:
+
+### Option 1: Local Development (Recommended for development)
+
+**Prerequisites:**
+- Python 3.10+
+- PostgreSQL 15+ with [pgvector](https://github.com/pgvector/pgvector)
+- Redis 7+
+- OpenAI API key
+
+**One-command startup:**
 
 ```bash
+python run.py
+```
+
+This will:
+1. Check dependencies (PostgreSQL, Redis)
+2. Create virtual environment (if needed)
+3. Install dependencies
+4. Run database migrations
+5. Start the FastAPI server with auto-reload
+
+The API will be available at `http://localhost:8000` with docs at `http://localhost:8000/docs`.
+
+### Option 2: Docker (Recommended for production-like environments)
+
+```bash
+# Start all services
 docker-compose up --build
+
+# Run migrations
+docker-compose exec app alembic upgrade head
+
+# Load data (optional)
+docker-compose exec app python scripts/seed_jobs.py --path /path/to/jobs.jsonl
 ```
 
-2. Run migrations:
+## Setup Details
 
+### Local Setup Prerequisites
+
+**macOS:**
 ```bash
-alembic upgrade head
+# Install PostgreSQL with pgvector
+brew install postgresql@15
+brew install pgvector
+
+# Install Redis
+brew install redis
+
+# Start services
+brew services start postgresql@15
+brew services start redis
+
+# Create database
+createdb cafesearch
 ```
 
-3. Load data:
-
+**Ubuntu/Debian:**
 ```bash
-python scripts/seed_jobs.py --path /path/to/jobs.jsonl
+# Install PostgreSQL with pgvector
+sudo apt install postgresql-15 postgresql-15-pgvector
+
+# Install Redis
+sudo apt install redis-server
+
+# Start services
+sudo service postgresql start
+sudo service redis-server start
+
+# Create database
+sudo -u postgres createdb cafesearch
+```
+
+**Environment Variables:**
+
+Create a `.env` file:
+```bash
+OPENAI_API_KEY=your_key_here
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/cafesearch
+REDIS_URL=redis://localhost:6379/0
 ```
 
 ## API

@@ -129,6 +129,8 @@ def _build_filter_clauses(filters: SearchFilters) -> list:
         clauses.append(Job.salary_max.is_(None) | (Job.salary_max >= filters.salary_min))
     if filters.salary_max is not None:
         clauses.append(Job.salary_min.is_(None) | (Job.salary_min <= filters.salary_max))
+    if filters.country:
+        clauses.append(Job.features["country"].astext == filters.country)
     if filters.location:
         clauses.append(
             or_(

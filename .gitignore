@@ -118,3 +118,7 @@ postgres_data/
 tmp/
 temp/
 *.tmp
+
+TECHNICAL_REPORT.md
+EVALUATION.md
+ENGINEERING_REPORT.md

@@ -148,6 +148,15 @@ def _extract_job_info(data: dict[str, Any]) -> dict[str, Any]:
         elif "inferred_titles" in v5:
             features["inferred_titles"] = v5["inferred_titles"]
 
+    # Normalize country from location (e.g., "... , US , ...")
+    if isinstance(features, dict) and location:
+        loc_parts = [p.strip() for p in location.split(",")]
+        for part in loc_parts[::-1]:
+            upper = part.upper()
+            if upper in {"US", "USA"}:
+                features["country"] = "US"
+                break
+
     return {
         "id": data.get("id") or data.get("job_id"),
         "title": title,

@@ -9,12 +9,17 @@ class SearchFilters(BaseModel):
     salary_min: int | None = None
     salary_max: int | None = None
     location: str | None = None
+    country: str | None = None
     experience_level: str | None = None
     exclude_job_ids: list[str] | None = None
     mission_keywords: list[str] | None = None
     company_industry: list[str] | None = None
     inferred_titles: list[str] | None = None
     text_keywords: list[str] | None = None
+    title_keywords: list[str] | None = None
+    description_keywords: list[str] | None = None
+    exclude_title_keywords: list[str] | None = None
+    exclude_company_names: list[str] | None = None
     title_keywords: list[str] | None = Field(
         default=None,
         description="Keywords to match specifically in job titles (e.g., 'tax', 'audit')"

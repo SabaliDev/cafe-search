@@ -55,6 +55,9 @@ async def search_jobs(
         if filters.salary_max is not None:
             clauses.append(Job.salary_min.is_(None) | (Job.salary_min <= filters.salary_max))
             applied_filters["salary_max"] = filters.salary_max
+        if filters.country:
+            clauses.append(Job.features["country"].astext == filters.country)
+            applied_filters["country"] = filters.country
         if filters.location:
             loc = filters.location.strip()
             loc_lower = loc.lower()
@@ -106,6 +109,20 @@ async def search_jobs(
                 keyword_filters.append(Job.description.ilike(f"%{keyword}%"))
             clauses.append(or_(*keyword_filters))
             applied_filters["text_keywords"] = filters.text_keywords
+        if filters.title_keywords:
+            clauses.append(or_(*[Job.title.ilike(f"%{k}%") for k in filters.title_keywords]))
+            applied_filters["title_keywords"] = filters.title_keywords
+        if filters.description_keywords:
+            clauses.append(or_(*[Job.description.ilike(f"%{k}%") for k in filters.description_keywords]))
+            applied_filters["description_keywords"] = filters.description_keywords
+        if filters.exclude_title_keywords:
+            for k in filters.exclude_title_keywords:
+                clauses.append(~Job.title.ilike(f"%{k}%"))
+            applied_filters["exclude_title_keywords"] = filters.exclude_title_keywords
+        if filters.exclude_company_names:
+            for k in filters.exclude_company_names:
+                clauses.append(~Job.company_name.ilike(f"%{k}%"))
+            applied_filters["exclude_company_names"] = filters.exclude_company_names
         if filters.title_keywords:
             title_clauses = []
             for kw in filters.title_keywords:
