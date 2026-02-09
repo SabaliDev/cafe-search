@@ -115,6 +115,23 @@ REDIS_URL=redis://localhost:6379/0
 - Vector search p95 < 100ms (no rerank)
 - Reranked p95 < 300ms
 
+## Design Decisions
+
+- **Three embeddings per job (explicit/inferred/company):** separates role intent from domain and culture signals for more stable routing.
+- **Hybrid search (vector + SQL filters):** semantic relevance without losing hard constraints like location, remote, salary.
+- **Session state with `semantic_query`:** preserves the original role intent across refinements.
+- **Refinement as deltas:** LLM outputs filter changes only; filters are merged, not replaced.
+- **Specialization validation:** refinement terms are validated against the corpus (title/description counts) before applying filters.
+- **Lightweight intent routing:** keyword-based intent is <1ms and avoids LLM latency for routing.
+
+## Trade-offs
+
+- **String-based exclusions:** `NOT ILIKE` is simple and fast but misses semantic equivalents (e.g., “Staff” vs “Senior”).
+- **Static role anchoring:** reliable for common roles but requires maintenance for new role categories.
+- **No OR logic for multi-location/skills:** current filter model is AND-only for simplicity.
+- **LLM refinement cost:** accurate parsing but dominates per-request cost at scale.
+- **Postgres + pgvector scaling:** solid up to ~10M jobs; beyond that, a dedicated vector DB is recommended.
+
 ## Tuning Guide
 
 - HNSW index params are set to `m=16`, `ef_construction=64`. For recall improvements, raise `ef_construction` during build.
