@@ -9,6 +9,7 @@ from app.embeddings import embedding_service
 from app.intent import classify_intent
 from app.models import Job, OrgType
 from app.schemas import SearchFilters, JobResult
+from app.semantic_filters import apply_semantic_exclusion
 
 
 EMBEDDING_COLUMN = {
@@ -34,6 +35,11 @@ async def search_jobs(
 
     clauses = []
     applied_filters: dict[str, Any] = {}
+    
+    # Debug logging
+    import os
+    if os.getenv("DEBUG_SEARCH"):
+        print(f"[DEBUG] search_jobs called with filters: {filters.model_dump() if filters else None}")
     if filters:
         if filters.remote is not None:
             clauses.append(Job.remote == filters.remote)
@@ -123,27 +129,6 @@ async def search_jobs(
             for k in filters.exclude_company_names:
                 clauses.append(~Job.company_name.ilike(f"%{k}%"))
             applied_filters["exclude_company_names"] = filters.exclude_company_names
-        if filters.title_keywords:
-            title_clauses = []
-            for kw in filters.title_keywords:
-                title_clauses.append(Job.title.ilike(f"%{kw}%"))
-            clauses.append(or_(*title_clauses))
-            applied_filters["title_keywords"] = filters.title_keywords
-        if filters.description_keywords:
-            desc_clauses = []
-            for kw in filters.description_keywords:
-                desc_clauses.append(Job.description.ilike(f"%{kw}%"))
-            clauses.append(or_(*desc_clauses))
-            applied_filters["description_keywords"] = filters.description_keywords
-        # Negative constraints - exclusions
-        if filters.exclude_title_keywords:
-            for kw in filters.exclude_title_keywords:
-                clauses.append(Job.title.not_ilike(f"%{kw}%"))
-            applied_filters["exclude_title_keywords"] = filters.exclude_title_keywords
-        if filters.exclude_company_names:
-            for kw in filters.exclude_company_names:
-                clauses.append(Job.company_name.not_ilike(f"%{kw}%"))
-            applied_filters["exclude_company_names"] = filters.exclude_company_names
         if filters.experience_level:
             level = filters.experience_level.lower()
             if level == "senior":
@@ -161,9 +146,20 @@ async def search_jobs(
         .order_by(distance)
         .limit(top_k)
     )
+    
+    # Debug logging
+    import os
+    if os.getenv("DEBUG_SEARCH"):
+        from sqlalchemy.dialects import postgresql
+        sql_str = str(stmt.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}))
+        print(f"[DEBUG] Generated SQL (first 300 chars): {sql_str[:300]}...")
+        print(f"[DEBUG] Number of clauses: {len(clauses)}")
+        print(f"[DEBUG] Applied filters: {applied_filters}")
 
     result = await session.execute(stmt)
     rows = result.all()
+    
+    # Exclusions are enforced in SQL clauses above for determinism
 
     results: list[JobResult] = []
     for job, dist in rows:

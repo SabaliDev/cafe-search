@@ -42,7 +42,7 @@ class SearchRequest(BaseModel):
     query: str
     session_id: str | None = None
     filters: SearchFilters | None = None
-    top_k: int = Field(default=20, ge=1, le=100)
+    top_k: int = Field(default=10, ge=1, le=100)
 
 
 class JobResult(BaseModel):

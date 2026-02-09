@@ -44,7 +44,7 @@ async def process_chat(message, history, session_id):
                 print(f"DEBUG: Initial search for query: {message}")
                 response = await client.post(
                     f"{API_BASE_URL}/search",
-                    json={"query": message, "top_k": 5}
+                    json={"query": message, "top_k": 10}
                 )
             else:
                 print(f"DEBUG: Refinement for session {session_id} with query: {message}")

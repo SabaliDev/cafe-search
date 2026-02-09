@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import os
 import time
 from typing import Any
 from fastapi import FastAPI, Depends, HTTPException
@@ -247,7 +248,7 @@ async def _maybe_rerank(session: AsyncSession, query: str, results):
 @app.post("/search", response_model=SearchResponse)
 async def search(request: SearchRequest, session: AsyncSession = Depends(get_session)):
     start = time.monotonic()
-    top_k = request.top_k
+    top_k = max(10, request.top_k)
     search_k = max(top_k, 100) if settings.reranker_enabled else top_k
     role_anchor = extract_role_anchor(request.query)
     effective_filters = request.filters
@@ -285,7 +286,8 @@ async def search(request: SearchRequest, session: AsyncSession = Depends(get_ses
             "active_embedding": analysis["intent"],
             "entities_history": (state.get("entities_history", []) + analysis["extracted_entities"]),
             "persistent_filters": state.get("persistent_filters", []),
-            "semantic_query": request.query,  # Store the semantic query for refinements
+            "semantic_query": request.query,
+            "top_k": top_k,  # Store top_k for consistent refinement
         }
     )
     await session_store.save(session, session_id, state)
@@ -373,8 +375,14 @@ async def refine(session_id: str, request: RefineRequest, session: AsyncSession 
             changes["specialization_matched"] = "none"
             changes["specialization_zero_results"] = True
 
-    top_k = 20
+    # Use stored top_k from original search, default to 10
+    top_k = max(10, state.get("top_k", 10))
     search_k = max(top_k, 100) if settings.reranker_enabled else top_k
+
+    # Debug logging
+    if os.getenv("DEBUG_SEARCH"):
+        print(f"[DEBUG REFINE] semantic_query: {semantic_query}")
+        print(f"[DEBUG REFINE] new_filters: {new_filters.model_dump()}")
 
     try:
         results, analysis = await search_jobs(

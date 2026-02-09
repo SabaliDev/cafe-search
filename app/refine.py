@@ -174,6 +174,9 @@ async def apply_refinement(
         
         result = json.loads(response.choices[0].message.content)
         filter_changes = result.get("filter_changes", result.get("filters", {}))
+        # Normalize legacy/alias keys from LLM outputs
+        if "exclude_title_keywords_semantic" in filter_changes and "exclude_title_keywords" not in filter_changes:
+            filter_changes["exclude_title_keywords"] = filter_changes.pop("exclude_title_keywords_semantic")
         changes = result.get("changes", {})
         clear_previous = result.get("clear_previous", False)
         new_job_type = result.get("new_job_type")
@@ -213,6 +216,21 @@ async def apply_refinement(
             if loc in {"usa", "u.s.a", "united states", "united states of america"}:
                 filter_changes.pop("location", None)
                 filter_changes["country"] = "US"
+
+        # Normalize exclude keywords (e.g., "management" -> manager variants)
+        if "exclude_title_keywords" in filter_changes:
+            normalized = []
+            for kw in filter_changes["exclude_title_keywords"]:
+                k = kw.lower().strip()
+                if k == "management":
+                    normalized.extend(["manager", "management", "mgr", "lead", "director"])
+                else:
+                    normalized.append(k)
+            filter_changes["exclude_title_keywords"] = list(dict.fromkeys(normalized))
+
+        # Enforce filter schema: drop unknown keys
+        allowed_keys = set(SearchFilters.model_fields.keys())
+        filter_changes = {k: v for k, v in filter_changes.items() if k in allowed_keys}
 
         # Merge: start with current filters, apply changes
         merged = {**current_filters}
